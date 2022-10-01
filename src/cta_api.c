@@ -59,7 +59,8 @@ void check_bus_api(CURL *curl, struct bus_requested* reply){
     char stn_str[32];
     snprintf(stn_str, 32, "%d,%d", reply->stn_no[0], reply->stn_no[1]);
     snprintf(api_string, 128,
-             "https://ctabustracker.com/bustime/api/v2/getpredictions?key=%s&stpid=%s&format=json", API_KEY, stn_str);
+             "https://ctabustracker.com/bustime/api/v2/getpredictions?key=%s&stpid=%s&format=json",
+             BUS_API_KEY, stn_str);
 
     curl_easy_setopt(curl, CURLOPT_URL, api_string);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, cb);
@@ -92,4 +93,34 @@ void check_bus_api(CURL *curl, struct bus_requested* reply){
     }
 }
 
-void check_train_api(CURL *curl, )
+void check_train_api(CURL *curl, struct train_requested *req){
+    CURLcode res;
+    struct memory content = {0};
+
+    char api_string[128];
+    snprintf(api_string, 128,
+             "https://lapi.transitchicago.com/api/1.0/ttarrivals.aspx?key=%s&mapid=%d&max=4&outputType=JSON",
+             TRAIN_API_KEY, req->map_id);
+
+    curl_easy_setopt(curl, CURLOPT_URL, api_string);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, cb);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&content);
+    res = curl_easy_perform(curl);
+
+    int eta_size = 0;
+    if(res == CURLE_OK){
+        cJSON *result_json = cJSON_Parse(content.response);
+        cJSON *train_response = cJSON_GetObjectItem(result_json, "ctatt");
+        cJSON *etas = cJSON_GetObjectItem(train_response, "etas");
+
+        eta_size = cJSON_GetArraySize(etas);
+
+        for(int i = 0; i < eta_size; i++){
+            cJSON* item = cJSON_GetArrayItem(etas, i);
+
+            cJSON* dest_json = cJSON_GetObjectItem(item, "destNm");
+            cJSON* line_json = cJSON_GetObjectItem(item, "rt");
+        }
+    }
+
+}

@@ -17,7 +17,11 @@ struct bus_requested{
 };
 
 struct train_requested{
-
+        char** line;
+        int map_id;
+        char** destinations;
+        int* minutes;
+        int pred_length;
 };
 
 

@@ -18,7 +18,7 @@ include_directories(${CURL_INCLUDE_DIRS})
 
 add_definitions(${GTK4_CFLAGS_OTHER})
 
-add_executable(Proxima src/main.c src/cairo_function.c src/cta_api.c src/key.h)
+add_executable(Proxima src/main.c src/cairo_function.c src/cta_api.c src/key.h src/application.c)
 target_link_libraries(Proxima ${GTK4_LIBRARIES})
 target_link_libraries(Proxima ${CURL_LIBRARIES})
 target_link_libraries(Proxima ${CJSON_LIBRARIES})
