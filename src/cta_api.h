@@ -27,5 +27,7 @@ struct train_requested{
 
 int check_api_pointer(gpointer user_data);
 void check_bus_api(CURL *curl, struct bus_requested* reply);
+time_t find_time_t(char* time_string);
+void check_train_api(CURL *curl, struct train_requested* reply);
 
 #endif //PROXIMA_CTA_API_H

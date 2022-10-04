@@ -6,10 +6,11 @@
 #include "key.h"
 
 #include <string.h>
+#include <stdlib.h>
+#include <time.h>
+#include <gtk/gtk.h>
 #include <curl/curl.h>
 #include <cjson/cJSON.h>
-#include <stdlib.h>
-#include <gtk/gtk.h>
 
 
 struct memory {
@@ -36,11 +37,17 @@ static size_t cb(void *data, size_t size, size_t nmemb, void *userdata) {
 
 int check_api_pointer(gpointer user_data){
 
+    GPtrArray* user_array = (GPtrArray*)user_data;
+
     CURL* curl = curl_easy_init();
-    struct bus_requested* reply = (struct bus_requested*) user_data;
+    struct bus_requested* bus_reply = (struct bus_requested*) g_ptr_array_index(user_array, 1);
+    struct train_requested* train_reply = (struct train_requested*) g_ptr_array_index(user_array, 2);
+
 
     if(curl) {
-        check_bus_api(curl, reply);
+        check_bus_api(curl, bus_reply);
+
+        check_train_api(curl, train_reply);
     }
 
     return 1;
@@ -65,7 +72,9 @@ void check_bus_api(CURL *curl, struct bus_requested* reply){
     curl_easy_setopt(curl, CURLOPT_URL, api_string);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&content);
-    res = curl_easy_perform(curl);
+    while(res != CURLE_OK) {
+        res = curl_easy_perform(curl);
+    }
 
     int prd_size = 0;
     if(res == CURLE_OK){
@@ -93,25 +102,42 @@ void check_bus_api(CURL *curl, struct bus_requested* reply){
     }
 }
 
+time_t find_time_t(char* time_string){
+
+    struct tm timestruct = {0};
+    sscanf(time_string, "%4d-%2d-%2dT%2d:%2d:%2d", &timestruct.tm_year, &timestruct.tm_mon, &timestruct.tm_mday,
+           &timestruct.tm_hour, &timestruct.tm_min, &timestruct.tm_sec);
+
+    timestruct.tm_year -= 100;
+    timestruct.tm_mon --;
+
+    time_t out_time = mktime(&timestruct) + 1;
+
+    return out_time;
+}
+
+
 void check_train_api(CURL *curl, struct train_requested *req){
     CURLcode res;
     struct memory content = {0};
 
     char api_string[128];
     snprintf(api_string, 128,
-             "https://lapi.transitchicago.com/api/1.0/ttarrivals.aspx?key=%s&mapid=%d&max=4&outputType=JSON",
+             "https://lapi.transitchicago.com/api/1.0/ttarrivals.aspx?key=%s&mapid=%d&max=4&outputType=json",
              TRAIN_API_KEY, req->map_id);
 
     curl_easy_setopt(curl, CURLOPT_URL, api_string);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&content);
-    res = curl_easy_perform(curl);
+    while(res != CURLE_OK) {
+        res = curl_easy_perform(curl);
+    }
 
     int eta_size = 0;
     if(res == CURLE_OK){
         cJSON *result_json = cJSON_Parse(content.response);
         cJSON *train_response = cJSON_GetObjectItem(result_json, "ctatt");
-        cJSON *etas = cJSON_GetObjectItem(train_response, "etas");
+        cJSON *etas = cJSON_GetObjectItem(train_response, "eta");
 
         eta_size = cJSON_GetArraySize(etas);
 
@@ -120,7 +146,19 @@ void check_train_api(CURL *curl, struct train_requested *req){
 
             cJSON* dest_json = cJSON_GetObjectItem(item, "destNm");
             cJSON* line_json = cJSON_GetObjectItem(item, "rt");
+
+            cJSON* pred_time_json = cJSON_GetObjectItem(item, "prdt");
+            cJSON* arr_time_json = cJSON_GetObjectItem(item, "arrT");
+
+            time_t abs_pred_time = find_time_t(pred_time_json->valuestring);
+            time_t abs_arr_time = find_time_t(arr_time_json->valuestring);
+
+            int minutes = (int)(abs_arr_time - abs_pred_time) / 60;
+
+            req->line[i] = line_json->valuestring;
+            req->destinations[i] = dest_json->valuestring;
+
+            req->minutes[i] = minutes;
         }
     }
-
 }

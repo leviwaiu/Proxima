@@ -43,8 +43,8 @@ void draw_information(cairo_t* cr, gpointer user_data){
         }
     }
 
-//    cairo_move_to(cr, 480, 0);
-//    cairo_line_to(cr, 480, 320);
+    cairo_move_to(cr, 480, 0);
+    cairo_line_to(cr, 480, 320);
 }
 
 void draw_function(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer user_data){
@@ -58,7 +58,7 @@ void draw_function(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpo
 
     draw_information(cr, bus_info);
 
-    gpointer string_ptr = g_ptr_array_index(user_pointer, 2);
+    gpointer string_ptr = g_ptr_array_index(user_pointer, 3);
     char* time_string =(char*)string_ptr;
 
     g_ptr_array_remove(user_data, string_ptr);
@@ -104,27 +104,35 @@ void activate (GtkApplication *app, gpointer user_data) {
     gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(drawing), draw_function, NULL, NULL);
     gtk_window_set_child(GTK_WINDOW(window), drawing);
 
-    struct bus_requested *req = malloc(sizeof(struct bus_requested));
+    struct bus_requested *req_bus = malloc(sizeof(struct bus_requested));
 
     int* station_list = malloc(2 * sizeof(int));
     station_list[0] = 6342;
     station_list[1] = 303;
-    req->stn_no = station_list;
+    req_bus->stn_no = station_list;
 
-    req->numbers = malloc(4 * sizeof(char*));
-    req->destinations = malloc(4 * sizeof(char*));
-    req->minutes = malloc(4 * sizeof(int));
+    req_bus->numbers = malloc(4 * sizeof(char*));
+    req_bus->destinations = malloc(4 * sizeof(char*));
+    req_bus->minutes = malloc(4 * sizeof(int));
+
+    struct train_requested *req_train = malloc(sizeof(struct train_requested));
+
+    req_train->map_id = 40470;
+    req_train->destinations = malloc(4 * sizeof(char*));
+    req_train->line = malloc(4 * sizeof(char*));
+    req_train->minutes = malloc(4 * sizeof(int));
 
     GPtrArray* user_data_pointers = g_ptr_array_new();
     g_ptr_array_add(user_data_pointers, (gpointer) drawing);
-    g_ptr_array_add(user_data_pointers, (gpointer)req);
+    g_ptr_array_add(user_data_pointers, (gpointer)req_bus);
+    g_ptr_array_add(user_data_pointers, (gpointer)req_train);
 
     //debug
     g_timeout_add(100, (GSourceFunc) update, (gpointer)user_data_pointers);
 
-    check_api_pointer(req);
+    check_api_pointer(user_data_pointers);
 
-    g_timeout_add_seconds(30, (GSourceFunc)check_api_pointer, req);
+    g_timeout_add_seconds(30, (GSourceFunc)check_api_pointer, (gpointer) user_data_pointers);
 
     //gtk_window_fullscreen(GTK_WINDOW(window));
 
