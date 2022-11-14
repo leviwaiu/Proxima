@@ -15,14 +15,14 @@ void draw_information(cairo_t* cr, gpointer user_data){
     double type_height = 60.0;
     double type_width = 100;
 
-    struct bus_requested *req = (struct bus_requested *)user_data;
+    struct display_list *req = (struct display_list *)user_data;
 
     if(req != NULL) {
 
         int size = req->pred_length;
         for(int i = 0; i < size; i++) {
             char* destination = req->destinations[i];
-            char* route = req->numbers[i];
+            char* route = req->rect_display[i];
 
             char minleft_string[3];
             snprintf(minleft_string, 3, "%d", req->minutes[i]);
@@ -32,8 +32,14 @@ void draw_information(cairo_t* cr, gpointer user_data){
 
             cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
             cairo_select_font_face(cr, "Helvetica", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-            cairo_set_font_size(cr, 50.0);
-            center_text(cr, route, 60, 40 + (type_height + 5) * i, 0);
+            if(req->type[i] == TYPE_BUS) {
+                cairo_set_font_size(cr, 50.0);
+                center_text(cr, route, 60, 40 + (type_height + 5) * i, 0);
+            }
+            if(req->type[i] == TYPE_TRAIN) {
+                cairo_set_font_size(cr, 30.0);
+                center_text(cr, route, 60, 40 + (type_height + 5) * i, 0);
+            }
             cairo_set_font_size(cr, 28.0);
             center_text(cr, destination, 120 , 40 + (type_height + 5) * i, 1);
             cairo_set_font_size(cr, 30.0);
@@ -43,8 +49,8 @@ void draw_information(cairo_t* cr, gpointer user_data){
         }
     }
 
-    cairo_move_to(cr, 480, 0);
-    cairo_line_to(cr, 480, 320);
+//    cairo_move_to(cr, 480, 0);
+//    cairo_line_to(cr, 480, 320);
 }
 
 void draw_function(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer user_data){
@@ -54,11 +60,10 @@ void draw_function(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpo
     cairo_paint(cr);
     cairo_set_line_width (cr, 2.0);
 
-    gpointer bus_info = g_ptr_array_index(user_pointer, 1);
+    gpointer display_list = g_ptr_array_index(user_pointer, 3);
+    draw_information(cr, display_list);
 
-    draw_information(cr, bus_info);
-
-    gpointer string_ptr = g_ptr_array_index(user_pointer, 3);
+    gpointer string_ptr = g_ptr_array_index(user_pointer, 4);
     char* time_string =(char*)string_ptr;
 
     g_ptr_array_remove(user_data, string_ptr);
@@ -73,21 +78,95 @@ void draw_function(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpo
 
 int update(gpointer user_data){
     GPtrArray* user_data_pointers = (GPtrArray*)user_data;
-    GtkWidget *drawing = (GtkWidget*)g_ptr_array_index(user_data_pointers, 0);
-
+    GtkWidget* drawing = (GtkWidget*)g_ptr_array_index(user_data_pointers, 0);
 
     time_t timestamp = time(0);
-    struct tm *local_struct = localtime(&timestamp);
+    struct tm* local_struct = localtime(&timestamp);
 
     char local_string[10];
     snprintf(local_string, sizeof(local_string), "%02d:%02d:%02d", local_struct->tm_hour, local_struct->tm_min, local_struct->tm_sec);
-    char *timestamp_string = malloc(sizeof(char) * 10);
+    char* timestamp_string = malloc(sizeof(char) * 10);
     strcpy(timestamp_string,local_string);
 
 
     g_ptr_array_add(user_data_pointers, (gpointer) timestamp_string);
 
     gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(drawing), draw_function, (gpointer)user_data_pointers, NULL);
+
+    return 1;
+}
+
+
+void display_list_copy(struct route_requested* route_list, int route_index, struct display_list *display_list, int display_index){
+
+    size_t dest_len = strlen(route_list->destinations[route_index]) + 1;
+    memcpy(display_list->destinations[display_index], route_list->destinations[route_index], dest_len);
+
+    size_t line_len = strlen(route_list->line[route_index]) + 1;
+    memcpy(display_list->rect_display[display_index], route_list->line[route_index], line_len);
+
+    display_list->minutes[display_index] = route_list->minutes[route_index];
+
+}
+
+
+void arrange_list(gpointer bus_info, gpointer train_info, gpointer display){
+    struct route_requested *bus_req = (struct route_requested *)bus_info;
+    struct route_requested *train_req = (struct route_requested *)train_info;
+    struct display_list *display_list = (struct display_list *) display;
+
+    int bus_index = 0;
+    int train_index = 0;
+    int display_length = 0;
+
+    while(display_length < 4) {
+
+        if(bus_index >= bus_req->pred_length && train_index >= train_req->pred_length){
+            break;
+        }
+
+        if(bus_index >= bus_req->pred_length) {
+            display_list_copy(train_req, train_index, display_list, display_length);
+            display_list->type[display_length] = TYPE_TRAIN;
+            train_index++;
+        }
+        else if(train_index >= train_req->pred_length) {
+            display_list_copy(bus_req, bus_index, display_list, display_length);
+            display_list->type[display_length] = TYPE_BUS;
+            bus_index++;
+        }
+        else {
+            int current_bus_minute = bus_req->minutes[bus_index];
+            int current_train_minute = train_req->minutes[train_index];
+
+            if (current_bus_minute < current_train_minute) {
+                display_list_copy(bus_req, bus_index, display_list, display_length);
+                display_list->type[display_length] = TYPE_BUS;
+                bus_index++;
+            } else {
+                display_list_copy(train_req, train_index, display_list, display_length);
+                display_list->type[display_length] = TYPE_TRAIN;
+                train_index++;
+            }
+        }
+
+        display_length++;
+    }
+
+    display_list->pred_length = display_length;
+
+}
+
+
+int list_update(gpointer user_data){
+    GPtrArray *user_data_pointers = (GPtrArray*)user_data;
+    check_api_pointer(user_data_pointers);
+
+    gpointer bus_info = g_ptr_array_index(user_data_pointers, 1);
+    gpointer train_info = g_ptr_array_index(user_data_pointers, 2);
+    gpointer display_list = g_ptr_array_index(user_data_pointers, 3);
+
+    arrange_list(bus_info, train_info, display_list);
 
     return 1;
 }
@@ -101,40 +180,66 @@ void activate (GtkApplication *app, gpointer user_data) {
 
     GtkWidget *drawing = gtk_drawing_area_new();
     gtk_widget_set_size_request(drawing, 480, 320);
-    gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(drawing), draw_function, NULL, NULL);
+    //gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(drawing), draw_function, NULL, NULL);
     gtk_window_set_child(GTK_WINDOW(window), drawing);
 
-    struct bus_requested *req_bus = malloc(sizeof(struct bus_requested));
+    struct route_requested *req_bus = malloc(sizeof(struct route_requested));
 
-    int* station_list = malloc(2 * sizeof(int));
-    station_list[0] = 6342;
-    station_list[1] = 303;
-    req_bus->stn_no = station_list;
+    int* bus_station_list = malloc(2 * sizeof(int));
+    bus_station_list[0] = 6342;
+    bus_station_list[1] = 303;
+    req_bus->stn_id = bus_station_list;
 
-    req_bus->numbers = malloc(4 * sizeof(char*));
-    req_bus->destinations = malloc(4 * sizeof(char*));
-    req_bus->minutes = malloc(4 * sizeof(int));
+    req_bus->line = malloc(MAX_DISPLAY_LENGTH * sizeof(char*));
+    req_bus->destinations = malloc(MAX_DISPLAY_LENGTH * sizeof(char*));
+    req_bus->minutes = malloc(MAX_DISPLAY_LENGTH * sizeof(int));
 
-    struct train_requested *req_train = malloc(sizeof(struct train_requested));
+    for(int i = 0; i < MAX_DISPLAY_LENGTH; i++){
+        req_bus->line[i] = malloc(MAX_CHARACTER_LENGTH * sizeof(char));
+        req_bus->destinations[i] = malloc(MAX_CHARACTER_LENGTH * sizeof(char));
+    }
 
-    req_train->map_id = 40470;
-    req_train->destinations = malloc(4 * sizeof(char*));
-    req_train->line = malloc(4 * sizeof(char*));
-    req_train->minutes = malloc(4 * sizeof(int));
+    struct route_requested *req_train = malloc(sizeof(struct route_requested));
+
+    int* train_station_list = malloc(1 * sizeof(int));
+    train_station_list[0] = 40470;
+
+    req_train->stn_id = train_station_list;
+    req_train->destinations = malloc(MAX_DISPLAY_LENGTH * sizeof(char*));
+    req_train->line = malloc(MAX_DISPLAY_LENGTH * sizeof(char*));
+    req_train->minutes = malloc(MAX_DISPLAY_LENGTH * sizeof(int));
+
+    for(int i = 0; i < MAX_DISPLAY_LENGTH; i++){
+        req_train->line[i] = malloc(MAX_CHARACTER_LENGTH * sizeof(char));
+        req_train->destinations[i] = malloc(MAX_CHARACTER_LENGTH * sizeof(char));
+    }
+
+    struct display_list *display_list = malloc(sizeof(struct display_list));
+    display_list->minutes = malloc(MAX_DISPLAY_LENGTH * sizeof(int));
+    display_list->type = malloc(MAX_DISPLAY_LENGTH * sizeof(int));
+    display_list->destinations = malloc(MAX_DISPLAY_LENGTH * sizeof(char*));
+    display_list->rect_display = malloc(MAX_DISPLAY_LENGTH * sizeof(char*));
+    display_list->rect_bgcol = malloc(MAX_DISPLAY_LENGTH * sizeof(struct color));
+
+    for(int i = 0; i < MAX_DISPLAY_LENGTH; i++){
+        display_list->destinations[i] = malloc(MAX_CHARACTER_LENGTH * sizeof(char));
+        display_list->rect_display[i] = malloc(MAX_CHARACTER_LENGTH * sizeof(char));
+    }
 
     GPtrArray* user_data_pointers = g_ptr_array_new();
     g_ptr_array_add(user_data_pointers, (gpointer) drawing);
     g_ptr_array_add(user_data_pointers, (gpointer)req_bus);
     g_ptr_array_add(user_data_pointers, (gpointer)req_train);
+    g_ptr_array_add(user_data_pointers, (gpointer)display_list);
 
     //debug
+    list_update((gpointer)user_data_pointers);
+
     g_timeout_add(100, (GSourceFunc) update, (gpointer)user_data_pointers);
 
-    check_api_pointer(user_data_pointers);
+    g_timeout_add_seconds(30, (GSourceFunc) list_update, (gpointer) user_data_pointers);
 
-    g_timeout_add_seconds(30, (GSourceFunc)check_api_pointer, (gpointer) user_data_pointers);
-
-    //gtk_window_fullscreen(GTK_WINDOW(window));
+    gtk_window_fullscreen(GTK_WINDOW(window));
 
     gtk_window_present(GTK_WINDOW(window));
 }

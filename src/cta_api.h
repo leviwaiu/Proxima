@@ -8,26 +8,19 @@
 #ifndef PROXIMA_CTA_API_H
 #define PROXIMA_CTA_API_H
 
-struct bus_requested{
-        char** numbers;
-        int* stn_no;
+struct route_requested{
+        char** line;
+        int* stn_id;
         char** destinations;
         int* minutes;
         int pred_length;
 };
 
-struct train_requested{
-        char** line;
-        int map_id;
-        char** destinations;
-        int* minutes;
-        int pred_length;
-};
 
 
 int check_api_pointer(gpointer user_data);
-void check_bus_api(CURL *curl, struct bus_requested* reply);
+void check_bus_api(CURL *curl, struct route_requested* reply);
 time_t find_time_t(char* time_string);
-void check_train_api(CURL *curl, struct train_requested* reply);
+void check_train_api(CURL *curl, struct route_requested* reply);
 
 #endif //PROXIMA_CTA_API_H
