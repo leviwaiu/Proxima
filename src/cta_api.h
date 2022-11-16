@@ -8,6 +8,11 @@
 #ifndef PROXIMA_CTA_API_H
 #define PROXIMA_CTA_API_H
 
+struct memory {
+    char* response;
+    size_t size;
+};
+
 struct route_requested{
         char** line;
         int* stn_id;
@@ -15,7 +20,6 @@ struct route_requested{
         int* minutes;
         int pred_length;
 };
-
 
 
 int check_api_pointer(gpointer user_data);

@@ -39,3 +39,15 @@ void center_text(cairo_t* cr, char* text, double x, double y, int align){
     cairo_move_to(cr, x, y);
     cairo_show_text(cr, text);
 };
+
+void center_image(cairo_t* cr, char* image_filepath, double x, double y, double scale_x, double scale_y){
+    cairo_surface_t *image = cairo_image_surface_create_from_png(image_filepath);
+    int image_width = cairo_image_surface_get_width(image);
+    int image_height = cairo_image_surface_get_height(image);
+
+    cairo_scale(cr, scale_x, scale_y);
+    cairo_set_source_surface(cr, image, x / scale_x - image_width/2.0, y / scale_y - image_height/2.0);
+    cairo_paint(cr);
+    cairo_surface_destroy(image);
+    cairo_scale(cr, 1.0/scale_x, 1.0/scale_y);
+}

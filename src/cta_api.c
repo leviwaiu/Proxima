@@ -13,11 +13,6 @@
 #include <cjson/cJSON.h>
 
 
-struct memory {
-    char* response;
-    size_t size;
-};
-
 static size_t cb(void *data, size_t size, size_t nmemb, void *userdata) {
     size_t realsize = size * nmemb;
     struct memory *mem = (struct memory *)userdata;

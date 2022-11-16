@@ -22,9 +22,9 @@ struct display_list{
 };
 
 struct color{
-    float red;
-    float green;
-    float blue;
+    double red;
+    double green;
+    double blue;
 };
 
 void draw_information(cairo_t* cr, gpointer user_data);

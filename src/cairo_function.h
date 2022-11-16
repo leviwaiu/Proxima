@@ -10,4 +10,6 @@ void rounded_rectangle(cairo_t* cr, double x, double y, double width, double hei
 
 void center_text(cairo_t* cr, char* text, double x, double y, int align);
 
+void center_image(cairo_t* cr, char* image_filepath, double x, double y, double scale_x, double scale_y);
+
 #endif //PROXIMA_CAIRO_FUNCTION_H

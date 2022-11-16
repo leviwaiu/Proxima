@@ -24,10 +24,12 @@ void draw_information(cairo_t* cr, gpointer user_data){
             char* destination = req->destinations[i];
             char* route = req->rect_display[i];
 
+            struct color rect_col = req->rect_bgcol[i];
+
             char minleft_string[3];
             snprintf(minleft_string, 3, "%d", req->minutes[i]);
 
-            cairo_set_source_rgb(cr, 0.0, 0.404, 0.557);
+            cairo_set_source_rgb(cr, rect_col.red, rect_col.green, rect_col.blue);
             rounded_rectangle(cr, 10, 10 + (type_height + 5) * i, type_width, type_height);
 
             cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
@@ -37,20 +39,21 @@ void draw_information(cairo_t* cr, gpointer user_data){
                 center_text(cr, route, 60, 40 + (type_height + 5) * i, 0);
             }
             if(req->type[i] == TYPE_TRAIN) {
-                cairo_set_font_size(cr, 30.0);
-                center_text(cr, route, 60, 40 + (type_height + 5) * i, 0);
+                center_image(cr, "res/train_white.png", 60, 41 + (type_height + 5) * i, 0.4, 0.4);
             }
+            cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
             cairo_set_font_size(cr, 28.0);
             center_text(cr, destination, 120 , 40 + (type_height + 5) * i, 1);
             cairo_set_font_size(cr, 30.0);
             center_text(cr, minleft_string, 435, 40 + (type_height + 5) * i, 2);
             cairo_set_font_size(cr, 14.0);
             center_text(cr,"mins", 475, 40 + (type_height + 5) * i, 2);
+
         }
     }
 
-//    cairo_move_to(cr, 480, 0);
-//    cairo_line_to(cr, 480, 320);
+    cairo_move_to(cr, 480, 0);
+    cairo_line_to(cr, 480, 320);
 }
 
 void draw_function(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer user_data){
@@ -109,6 +112,11 @@ void display_list_copy(struct route_requested* route_list, int route_index, stru
 
 }
 
+void set_color(struct color* col, double red, double green, double blue){
+   col->red = red;
+   col->green = green;
+   col->blue = blue;
+}
 
 void arrange_list(gpointer bus_info, gpointer train_info, gpointer display){
     struct route_requested *bus_req = (struct route_requested *)bus_info;
@@ -128,11 +136,13 @@ void arrange_list(gpointer bus_info, gpointer train_info, gpointer display){
         if(bus_index >= bus_req->pred_length) {
             display_list_copy(train_req, train_index, display_list, display_length);
             display_list->type[display_length] = TYPE_TRAIN;
+            set_color(&display_list->rect_bgcol[display_length], 0.0, 0.613,0.859);
             train_index++;
         }
         else if(train_index >= train_req->pred_length) {
             display_list_copy(bus_req, bus_index, display_list, display_length);
             display_list->type[display_length] = TYPE_BUS;
+            set_color(&display_list->rect_bgcol[display_length], 0.0, 0.404,0.557);
             bus_index++;
         }
         else {
@@ -142,10 +152,12 @@ void arrange_list(gpointer bus_info, gpointer train_info, gpointer display){
             if (current_bus_minute < current_train_minute) {
                 display_list_copy(bus_req, bus_index, display_list, display_length);
                 display_list->type[display_length] = TYPE_BUS;
+                set_color(&display_list->rect_bgcol[display_length], 0.0, 0.404,0.557);
                 bus_index++;
             } else {
                 display_list_copy(train_req, train_index, display_list, display_length);
                 display_list->type[display_length] = TYPE_TRAIN;
+                set_color(&display_list->rect_bgcol[display_length], 0.0, 0.613,0.859);
                 train_index++;
             }
         }
@@ -239,7 +251,7 @@ void activate (GtkApplication *app, gpointer user_data) {
 
     g_timeout_add_seconds(30, (GSourceFunc) list_update, (gpointer) user_data_pointers);
 
-    gtk_window_fullscreen(GTK_WINDOW(window));
+    //gtk_window_fullscreen(GTK_WINDOW(window));
 
     gtk_window_present(GTK_WINDOW(window));
 }
