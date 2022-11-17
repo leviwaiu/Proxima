@@ -52,8 +52,8 @@ void draw_information(cairo_t* cr, gpointer user_data){
         }
     }
 
-    cairo_move_to(cr, 480, 0);
-    cairo_line_to(cr, 480, 320);
+//    cairo_move_to(cr, 480, 0);
+//    cairo_line_to(cr, 480, 320);
 }
 
 void draw_function(GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer user_data){
@@ -251,7 +251,7 @@ void activate (GtkApplication *app, gpointer user_data) {
 
     g_timeout_add_seconds(30, (GSourceFunc) list_update, (gpointer) user_data_pointers);
 
-    //gtk_window_fullscreen(GTK_WINDOW(window));
+    gtk_window_fullscreen(GTK_WINDOW(window));
 
     gtk_window_present(GTK_WINDOW(window));
 }
